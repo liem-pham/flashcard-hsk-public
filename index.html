@@ -1,0 +1,1398 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Flashcard HSK</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --ink: #1d2530;
+        --secondary: rgba(60, 60, 67, 0.62);
+        --faint: rgba(60, 60, 67, 0.4);
+        --card-fill: rgba(255, 255, 255, 0.3);
+        --card-fill-drag: rgba(255, 255, 255, 0.55);
+        --card-stroke: rgba(255, 255, 255, 0.65);
+        --row-fill: rgba(255, 255, 255, 0.38);
+        --block-fill: rgba(255, 255, 255, 0.35);
+        --section-fill: rgba(255, 255, 255, 0.3);
+        --orange: #e8710a;
+        --green: #1da851;
+        --green-tint: 34, 197, 94;
+        --red: #dd3333;
+        --red-tint: 239, 68, 68;
+        --shadow: 0 18px 38px rgba(23, 38, 66, 0.16);
+        --bg-1: #ebf2ff;
+        --bg-2: #faede0;
+        --bg-3: #e6f7eb;
+        --blob-o: rgba(249, 115, 22, 0.35);
+        --blob-b: rgba(59, 130, 246, 0.3);
+        --blob-g: rgba(34, 197, 94, 0.22);
+        --switch-off: rgba(120, 120, 128, 0.32);
+        --divider: rgba(60, 60, 67, 0.14);
+        --zh-font: "Yuanti SC", "STYuanti-SC-Bold", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #f2f4f8;
+          --secondary: rgba(235, 235, 245, 0.6);
+          --faint: rgba(235, 235, 245, 0.38);
+          --card-fill: rgba(255, 255, 255, 0.09);
+          --card-fill-drag: rgba(255, 255, 255, 0.16);
+          --card-stroke: rgba(255, 255, 255, 0.22);
+          --row-fill: rgba(255, 255, 255, 0.08);
+          --block-fill: rgba(255, 255, 255, 0.07);
+          --section-fill: rgba(28, 32, 44, 0.55);
+          --orange: #ffa04d;
+          --shadow: 0 18px 38px rgba(0, 0, 0, 0.45);
+          --bg-1: #0d1526;
+          --bg-2: #1c1524;
+          --bg-3: #0b1a13;
+          --blob-o: rgba(249, 115, 22, 0.22);
+          --blob-b: rgba(59, 130, 246, 0.2);
+          --blob-g: rgba(34, 197, 94, 0.14);
+          --switch-off: rgba(120, 120, 128, 0.4);
+          --divider: rgba(235, 235, 245, 0.14);
+        }
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: var(--ink);
+        overflow: hidden;
+      }
+      button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; min-height: 2.25rem; }
+
+      /* ---------- Liquid Glass background ---------- */
+      .bg { position: fixed; inset: 0; z-index: 0; overflow: hidden;
+        background: linear-gradient(135deg, var(--bg-1), var(--bg-2) 55%, var(--bg-3)); }
+      .bg .blob { position: absolute; border-radius: 50%; filter: blur(70px); }
+      .bg .b1 { width: 260px; height: 260px; background: var(--blob-o); left: -130px; top: -120px; }
+      .bg .b2 { width: 280px; height: 280px; background: var(--blob-b); right: -110px; bottom: -90px; filter: blur(80px); }
+      .bg .b3 { width: 200px; height: 200px; background: var(--blob-g); right: 60px; top: 22%; }
+
+      /* ---------- Review screen ---------- */
+      .screen { position: relative; z-index: 1; height: 100dvh; display: flex; flex-direction: column;
+        max-width: 600px; margin: 0 auto; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+      .topbar { position: relative; display: flex; align-items: center; justify-content: center;
+        min-height: 52px; padding: 6px 64px 2px; }
+      .badge { font-size: 0.95rem; color: var(--secondary); text-align: center; }
+      .gear { position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+        width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+        background: var(--row-fill); border: 1px solid var(--card-stroke);
+        backdrop-filter: blur(18px) saturate(1.5); -webkit-backdrop-filter: blur(18px) saturate(1.5);
+        box-shadow: 0 6px 16px rgba(23, 38, 66, 0.12); color: var(--secondary); }
+      .gear svg { width: 22px; height: 22px; fill: currentColor; }
+      .gear:active { transform: translateY(-50%) scale(0.94); }
+
+      .deck-wrap { flex: 1; padding: 6px 16px 16px; min-height: 0; }
+      .deck { position: relative; width: 100%; height: 100%; }
+
+      .card { position: absolute; inset: 0; border-radius: 28px; overflow: hidden;
+        background: var(--card-fill); border: 1px solid var(--card-stroke);
+        backdrop-filter: blur(22px) saturate(1.6); -webkit-backdrop-filter: blur(22px) saturate(1.6);
+        box-shadow: var(--shadow); transform-origin: 50% 100%; will-change: transform; }
+      .card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 70px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+        pointer-events: none; }
+      @media (prefers-color-scheme: dark) { .card::before { background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0)); } }
+      .card.back { box-shadow: 0 10px 22px rgba(23, 38, 66, 0.1); }
+      .card.top { touch-action: none; cursor: grab; }
+      .card.top.dragging { backdrop-filter: none; -webkit-backdrop-filter: none;
+        background: var(--card-fill-drag); box-shadow: none; cursor: grabbing; }
+      .card-inner { position: absolute; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; padding: 18px 20px; text-align: center;
+        overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+      .card-inner::-webkit-scrollbar { display: none; }
+
+      .hanzi { font-family: var(--zh-font); font-weight: 700; line-height: 1.15; white-space: nowrap; }
+      .hanzi.big { font-size: clamp(56px, 24vw, 104px); }
+      .hanzi.mid { font-size: clamp(38px, 13vw, 54px); }
+      .hanzi.small { font-size: clamp(30px, 10vw, 42px); }
+      .hanzi.len5 { font-size: clamp(40px, 17vw, 76px); }
+      .hanzi.len6 { font-size: clamp(32px, 13.5vw, 62px); }
+      .details { margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 7px; width: 100%; }
+      .pin-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; justify-content: center; }
+      .pinyin { font-size: 1.3rem; color: var(--orange); }
+      .pos { font-size: 0.95rem; color: var(--secondary); }
+      .hanviet { font-size: 0.95rem; }
+      .vi { font-size: 1.06rem; font-weight: 600; line-height: 1.35; }
+
+      .block { width: 100%; text-align: left; background: var(--block-fill);
+        border: 1px solid var(--card-stroke); border-radius: 12px; padding: 10px 12px; margin-top: 4px; }
+      .block-head { display: flex; align-items: center; gap: 10px; }
+      .block-title { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; color: var(--secondary); margin-right: auto; }
+      .block .ex-zh { font-family: var(--zh-font); font-weight: 700; font-size: 1.12rem; line-height: 1.45; margin-top: 6px; }
+      .block .ex-py { font-size: 0.82rem; color: var(--secondary); margin-top: 4px; line-height: 1.4; }
+      .block .ex-vi { font-size: 0.92rem; margin-top: 4px; line-height: 1.4; }
+      .tg { display: inline-flex; align-items: center; gap: 5px; font-size: 0.8rem; min-height: 2.25rem; cursor: pointer; }
+      .ana-row { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; }
+      .ana-row + .ana-row { border-top: 1px solid var(--divider); }
+      .ana-char { font-family: var(--zh-font); font-weight: 700; font-size: 1.65rem; width: 36px; text-align: center; flex: none; line-height: 1.2; }
+      .ana-rad { font-size: 0.8rem; font-weight: 700; line-height: 1.35; }
+      .ana-parts { font-size: 0.8rem; color: var(--secondary); line-height: 1.4; }
+      .ana-btn { margin-top: 8px; display: inline-flex; align-items: center; gap: 4px;
+        font-size: 0.8rem; font-weight: 700; color: var(--secondary);
+        background: var(--block-fill); border: 1px solid var(--card-stroke);
+        border-radius: 999px; padding: 5px 12px; min-height: 2.25rem; }
+      .ana-btn svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 3; }
+
+      .drag-tint { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+      .stamp { position: absolute; left: 50%; top: 42%; pointer-events: none; opacity: 0;
+        transform: translate(-50%, -50%) rotate(-15deg); text-align: center;
+        border: 4px solid currentColor; border-radius: 14px; padding: 10px 26px 12px;
+        background: rgba(255, 255, 255, 0.14); }
+      .stamp .word { display: block; font-size: 3.4rem; font-weight: 900; letter-spacing: 0.04em; line-height: 1.05;
+        font-family: -apple-system, "SF Pro Rounded", "Segoe UI", sans-serif; }
+      .stamp .iv { display: block; font-size: 1rem; font-weight: 700; margin-top: 2px; }
+      .stamp.good { color: var(--green); }
+      .stamp.bad { color: var(--red); }
+
+      .empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 10px; text-align: center; padding: 24px; }
+      .empty h2 { font-size: 1.25rem; margin: 0; }
+      .empty p { color: var(--secondary); margin: 0; line-height: 1.5; max-width: 320px; }
+      .empty button { background: #0a84ff; color: #fff; font-weight: 600; border-radius: 12px; padding: 10px 22px; margin-top: 6px; }
+      .loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--secondary); font-size: 1rem; }
+
+      /* ---------- Switch ---------- */
+      .switch { position: relative; width: 46px; height: 28px; flex: none; display: inline-block; }
+      .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+      .switch .track { position: absolute; inset: 0; border-radius: 999px; background: var(--switch-off); transition: background 0.2s; pointer-events: none; }
+      .switch .track::after { content: ""; position: absolute; left: 2px; top: 2px; width: 24px; height: 24px;
+        border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.25); transition: transform 0.2s; }
+      .switch input:checked + .track { background: #34c759; }
+      .switch input:checked + .track::after { transform: translateX(18px); }
+      .switch input:focus-visible + .track { outline: 2px solid #0a84ff; outline-offset: 2px; }
+
+      /* ---------- Settings sheet ---------- */
+      .sheet { position: fixed; inset: 0; z-index: 10; transform: translateY(102%); transition: transform 0.34s cubic-bezier(0.32, 0.9, 0.35, 1);
+        display: flex; flex-direction: column; }
+      .sheet.open { transform: translateY(0); }
+      .sheet-bg { position: absolute; inset: 0; background: linear-gradient(135deg, var(--bg-1), var(--bg-2) 55%, var(--bg-3)); }
+      .sheet-bg .blob { position: absolute; border-radius: 50%; filter: blur(70px); }
+      .sheet-head { position: relative; display: flex; align-items: center; min-height: 54px;
+        padding: max(8px, env(safe-area-inset-top)) 16px 6px; }
+      .sheet-head .title { position: absolute; left: 0; right: 0; text-align: center; font-weight: 700; font-size: 1.05rem; pointer-events: none; }
+      .sheet-head .close, .sheet-head .back { position: relative; z-index: 1; color: #0a84ff; font-size: 1rem; padding: 6px 4px; }
+      .sheet-head .spacer { margin-left: auto; }
+      .sheet-head .mini { color: #0a84ff; font-size: 0.92rem; padding: 6px 2px; }
+      .sheet-body { position: relative; flex: 1; overflow-y: auto; padding: 10px 20px calc(28px + env(safe-area-inset-bottom)); }
+      .sheet-inner { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+      .gsection { background: var(--section-fill); border: 1px solid var(--card-stroke); border-radius: 24px;
+        padding: 18px; backdrop-filter: blur(22px) saturate(1.6); -webkit-backdrop-filter: blur(22px) saturate(1.6);
+        box-shadow: 0 10px 24px rgba(23, 38, 66, 0.08); }
+      .gsection h3 { margin: 0 0 12px; font-size: 1.02rem; }
+      .gsection .note { font-size: 0.85rem; color: var(--secondary); line-height: 1.5; margin: 12px 0 0; }
+      .grow { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+        background: var(--row-fill); border: 1px solid var(--card-stroke); border-radius: 20px;
+        padding: 13px 16px; margin-top: 10px; min-height: 3.25rem; }
+      .gsection .grow:first-of-type { margin-top: 0; }
+      .grow .grow-label { font-weight: 500; }
+      .grow .grow-sub { margin-left: auto; color: var(--secondary); font-size: 0.92rem; white-space: nowrap; }
+      .grow .chev { width: 9px; height: 15px; stroke: var(--faint); fill: none; stroke-width: 2.6; flex: none; }
+      .grow .val { margin-left: auto; color: var(--secondary); font-weight: 600; }
+      .grow .check { width: 26px; height: 26px; flex: none; }
+      .grow .check .on { fill: #34c759; }
+      .grow .check .off { fill: none; stroke: var(--faint); stroke-width: 1.6; }
+      .grow:active { filter: brightness(0.97); }
+      .devid { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.82rem;
+        word-break: break-all; line-height: 1.45; flex: 1; }
+      .mini-link { color: #0a84ff; font-size: 0.95rem; font-weight: 600; padding: 6px 8px; white-space: nowrap; flex: none; }
+      .grow input[type="text"] { flex: 1; min-width: 0; font: inherit; color: inherit; background: transparent;
+        border: 0; outline: none; min-height: 2.25rem; }
+      .grow input[type="text"]::placeholder { color: var(--faint); }
+      .msg { margin-top: 12px; font-size: 0.9rem; line-height: 1.5; border-radius: 14px; padding: 10px 14px; display: none; }
+      .msg.ok { display: block; background: rgba(52, 199, 89, 0.16); }
+      .msg.err { display: block; background: rgba(255, 59, 48, 0.14); }
+      .view { display: none; }
+      .view.active { display: block; }
+      @media (prefers-reduced-motion: reduce) {
+        .sheet { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg" aria-hidden="true">
+      <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+    </div>
+
+    <main class="screen">
+      <div class="topbar">
+        <div class="badge" id="badge"></div>
+        <button class="gear" id="gearBtn" aria-label="Cài đặt">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.781-.872 2.105l-.34.1c-1.4.413-1.4 2.398 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.398 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.398 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
+        </button>
+      </div>
+      <div class="deck-wrap">
+        <div class="deck" id="deck">
+          <div class="loading" id="loading">Đang tải từ vựng…</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Settings sheet -->
+    <div class="sheet" id="sheet" aria-hidden="true">
+      <div class="sheet-bg" aria-hidden="true">
+        <div class="blob" style="width:260px;height:260px;background:var(--blob-o);left:-130px;top:-120px"></div>
+        <div class="blob" style="width:280px;height:280px;background:var(--blob-b);right:-110px;bottom:-90px"></div>
+      </div>
+
+      <!-- Main settings view -->
+      <div class="view active" id="viewMain" style="display:flex;flex-direction:column;flex:1;min-height:0;position:relative">
+        <div class="sheet-head">
+          <button class="close" id="closeSettings">Đóng</button>
+          <div class="title">Cài đặt</div>
+        </div>
+        <div class="sheet-body">
+          <div class="sheet-inner">
+            <section class="gsection">
+              <h3>Chọn bài học</h3>
+              <div id="levelList"></div>
+              <p class="note">Bỏ chọn một bài không xoá tiến độ đã học của bài đó.</p>
+            </section>
+
+            <section class="gsection">
+              <h3>Câu ví dụ</h3>
+              <div class="grow">
+                <span class="grow-label">Hiện pinyin của ví dụ</span>
+                <label class="switch" style="margin-left:auto">
+                  <input type="checkbox" id="swPinyin" />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <div class="grow">
+                <span class="grow-label">Hiện nghĩa của ví dụ</span>
+                <label class="switch" style="margin-left:auto">
+                  <input type="checkbox" id="swMeaning" />
+                  <span class="track"></span>
+                </label>
+              </div>
+            </section>
+
+            <section class="gsection">
+              <h3>Tổng quan</h3>
+              <div class="grow"><span class="grow-label">Tổng số từ trong app</span><span class="val" id="stTotal">–</span></div>
+              <div class="grow"><span class="grow-label">Đã học</span><span class="val" id="stLearned">–</span></div>
+              <div class="grow"><span class="grow-label">Đến hạn ôn</span><span class="val" id="stDue">–</span></div>
+              <div class="grow"><span class="grow-label">Tổng lượt chấm</span><span class="val" id="stGrades">–</span></div>
+            </section>
+
+            <section class="gsection">
+              <h3>Đồng bộ</h3>
+              <div class="grow">
+                <span class="devid" id="deviceIdText">…</span>
+                <button class="mini-link" id="btnCopyDevice">Sao chép</button>
+              </div>
+              <div class="grow">
+                <input type="text" id="deviceIdInput" placeholder="Nhập mã thiết bị từ máy khác để học tiếp" autocomplete="off" autocapitalize="none" spellcheck="false" />
+                <button class="mini-link" id="btnApplyDevice">Dùng mã này</button>
+              </div>
+              <div class="msg" id="syncMsg" role="status"></div>
+              <p class="note" id="syncStatus">Đang kiểm tra đồng bộ…</p>
+              <button class="grow" id="btnSql">
+                <span class="grow-label">Tải file SQL tạo bảng đồng bộ</span>
+                <span class="grow-sub">flashcard-supabase.sql</span>
+              </button>
+              <p class="note">Mã thiết bị ở trên là của trình duyệt này. Tiến độ đồng bộ qua Supabase theo mã thiết bị: sang máy khác, nhập mã này vào ô trên là học tiếp đúng tiến độ. Lần đầu bật đồng bộ cần chạy file SQL này trong Supabase Dashboard (SQL Editor) để tạo 3 bảng flashcard_*; chưa chạy thì app vẫn lưu tiến độ trên trình duyệt này, và tự đồng bộ lên khi bảng có. Mất mạng vẫn học bình thường bằng dữ liệu trên máy, app tự đồng bộ lại khi có mạng.</p>
+            </section>
+
+            <section class="gsection">
+              <h3>Sao lưu &amp; Phục hồi</h3>
+              <button class="grow" id="btnExport">
+                <span class="grow-label">Tải bản sao lưu JSON</span>
+                <span class="grow-sub">flashcard-hsk-backup.json</span>
+              </button>
+              <button class="grow" id="btnImport">
+                <span class="grow-label">Phục hồi từ sao lưu</span>
+                <span class="grow-sub">Chọn file JSON</span>
+              </button>
+              <input type="file" id="fileImport" accept=".json,application/json" hidden />
+              <div class="msg" id="backupMsg" role="status"></div>
+              <p class="note">Phục hồi hợp nhất vào tiến độ hiện tại, không xoá dữ liệu đang có: thẻ trong bản sao lưu sẽ ghi đè thẻ cùng từ, thẻ chưa có sẽ được thêm mới, lịch sử chấm được thêm vào và tự khử trùng. Từ không có trong app sẽ bị bỏ qua.</p>
+              <p class="note">File sao lưu có kèm mã thiết bị, phục hồi từ file sẽ nhận luôn mã thiết bị đó. Ngoài đồng bộ Supabase ở trên, bản sao lưu JSON là cách chuyển tiến độ thủ công khi đổi trình duyệt hoặc đổi máy.</p>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lesson picker view -->
+      <div class="view" id="viewLessons" style="flex-direction:column;flex:1;min-height:0;position:relative">
+        <div class="sheet-head">
+          <button class="back" id="backSettings">‹ Cài đặt</button>
+          <div class="title" id="pickerTitle">Bài học</div>
+          <div class="spacer" style="display:flex;gap:14px">
+            <button class="mini" id="btnSelectAll">Chọn tất cả</button>
+            <button class="mini" id="btnSelectNone">Bỏ chọn tất cả</button>
+          </div>
+        </div>
+        <div class="sheet-body">
+          <div class="sheet-inner">
+            <section class="gsection">
+              <div id="lessonList"></div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    "use strict";
+    /* ============================================================
+       FSRS-7 — port 1:1 from the iOS app's FSRS7.swift
+       34-parameter dual-trace model (slow + fast stability traces).
+       ============================================================ */
+    var FSRS = (function () {
+      var w = [
+        0.1104, 2.2395, 3.9221, 11.7841,
+        6.1686, 0.6457, 3.6807,
+        1.9795, 0.0, 1.3826, 0.7024, 0.5999, 0.8146, 0.6398, 1.0,
+        1.3207, 0.6707, 3.8668, 0.4416, 0.0934, 1.8631, 0.6162, 1.0869,
+        0.1567, 0.0801, 0.2421, 0.9464, 0.1433, 0.7145, 0.0, 0.5667,
+        0.3734, 0.5333, 0.3048
+      ];
+      var desiredRetention = 0.9, daySeconds = 86400, maxIntervalDays = 36500;
+      var decaySlow = w[23], decayFast = w[26], alphaFast = w[31];
+      function curveFactor(decay) { return Math.pow(0.9, -1 / decay) - 1; }
+      var factorSlow = curveFactor(decaySlow), factorFast = curveFactor(decayFast);
+
+      function traceR(elapsedDays, stability, factor, decay) {
+        if (elapsedDays <= 0) return 1;
+        return Math.pow(1 + factor * elapsedDays / stability, -decay);
+      }
+      function retrievability(elapsedDays, sSlow, sFast) {
+        if (elapsedDays <= 0) return 1;
+        var rFast = traceR(elapsedDays, sFast, factorFast, decayFast);
+        var rSlow = traceR(elapsedDays, sSlow, factorSlow, decaySlow);
+        return alphaFast * rFast + (1 - alphaFast) * rSlow;
+      }
+      function intervalFor(sSlow, sFast) {
+        var lo = 0, hi = 1;
+        while (retrievability(hi, sSlow, sFast) > desiredRetention && hi < maxIntervalDays) {
+          lo = hi; hi = Math.min(hi * 2, maxIntervalDays);
+        }
+        for (var i = 0; i < 60; i++) {
+          var mid = (lo + hi) / 2;
+          if (retrievability(mid, sSlow, sFast) > desiredRetention) lo = mid; else hi = mid;
+        }
+        return Math.min(Math.max((lo + hi) / 2, 0), maxIntervalDays);
+      }
+      function clampD(x) { return Math.min(Math.max(x, 1), 10); }
+      function initialDifficulty(rating) {
+        return clampD(w[4] - Math.exp(w[5] * (rating - 1)) + 1);
+      }
+      function nextDifficulty(difficulty, rating) {
+        var delta = -w[6] * (rating - 3);
+        return clampD(difficulty + delta * (10 - difficulty) / 9);
+      }
+      var slowTrace = { recallExp: w[7], recallSPow: w[8], rPow: w[9], forgetBase: w[10],
+        forgetDPow: w[11], forgetSPow: w[12], hardPenalty: w[13], easyBonus: w[14],
+        factor: factorSlow, decay: decaySlow };
+      var fastTrace = { recallExp: w[15], recallSPow: w[16], rPow: w[17], forgetBase: w[18],
+        forgetDPow: w[19], forgetSPow: w[20], hardPenalty: w[21], easyBonus: w[22],
+        factor: factorFast, decay: decayFast };
+
+      function nextRecall(p, difficulty, stability, r, rating) {
+        var hardPenalty = rating === 2 ? p.hardPenalty : 1;
+        var easyBonus = rating === 4 ? p.easyBonus : 1;
+        var growth = Math.exp(p.recallExp) * (11 - difficulty)
+          * Math.pow(stability, -p.recallSPow)
+          * (Math.exp(p.rPow * (1 - r)) - 1) * hardPenalty * easyBonus;
+        return Math.max(0.001, stability * (1 + growth));
+      }
+      function nextForget(p, difficulty, stability, r) {
+        var s = p.forgetBase * Math.pow(difficulty, -p.forgetDPow)
+          * (Math.pow(stability + 1, p.forgetSPow) - 1) * Math.exp(p.rPow * (1 - r));
+        return Math.max(0.001, Math.min(s, stability));
+      }
+      function shortTerm(stability, rating) {
+        var increase = Math.exp(w[32] * (rating - 3 + w[33]));
+        if (rating >= 3) increase = Math.max(increase, 1);
+        return Math.max(0.001, stability * increase);
+      }
+      function gradeTrace(p, prevStability, difficulty, rating, elapsedDays) {
+        if (elapsedDays < 1) return shortTerm(prevStability, rating);
+        var r = traceR(elapsedDays, prevStability, p.factor, p.decay);
+        if (rating === 1) return nextForget(p, difficulty, prevStability, r);
+        return nextRecall(p, difficulty, prevStability, r, rating);
+      }
+      /* prev: null for a new card, else {sSlow, sFast, diff, lastAt(ms), state, lapses} */
+      function grade(prev, rating, nowMs) {
+        var sSlow, sFast, difficulty, state, lapses = prev ? prev.lapses : 0;
+        var isNew = !prev || prev.lastAt == null;
+        if (isNew) {
+          sSlow = w[rating - 1];
+          sFast = Math.max(0.001, sSlow * w[33]);
+          difficulty = initialDifficulty(rating);
+          state = rating === 1 ? "learning" : "review";
+        } else {
+          var elapsedDays = Math.max(0, (nowMs - prev.lastAt) / (daySeconds * 1000));
+          difficulty = nextDifficulty(prev.diff, rating);
+          sSlow = gradeTrace(slowTrace, prev.sSlow, prev.diff, rating, elapsedDays);
+          sFast = gradeTrace(fastTrace, prev.sFast, prev.diff, rating, elapsedDays);
+          if (rating === 1) {
+            state = prev.state === "review" ? "relearning" : "learning";
+            if (prev.state === "review" || prev.state === "relearning") lapses += 1;
+          } else {
+            state = "review";
+          }
+        }
+        var intervalDays = intervalFor(sSlow, sFast);
+        if (rating === 1) {
+          intervalDays = Math.min(intervalDays, 10 / 1440);
+          intervalDays = Math.max(intervalDays, 1 / 1440);
+        } else if (!isNew && intervalDays < 1 && prev.state === "review") {
+          intervalDays = Math.max(intervalDays, 10 / 1440);
+        } else if (isNew && rating === 2) {
+          intervalDays = Math.max(intervalDays, 10 / 1440);
+        }
+        return { sSlow: sSlow, sFast: sFast, diff: difficulty,
+                 intervalDays: intervalDays, state: state, lapses: lapses };
+      }
+      function intervalLabel(days) {
+        if (days < 1 / 24) return Math.max(1, Math.round(days * 1440)) + " phút";
+        if (days < 1) return Math.round(days * 24) + " giờ";
+        if (days < 30) return Math.round(days) + " ngày";
+        if (days < 365) return Math.round(days / 30) + " tháng";
+        var years = days / 365;
+        return (years % 1 === 0 ? String(Math.trunc(years)) : years.toFixed(1)) + " năm";
+      }
+      return { grade: grade, retrievability: retrievability, intervalLabel: intervalLabel,
+               dayMs: daySeconds * 1000 };
+    })();
+
+    /* ============================================================
+       Store — progress in this browser's localStorage.
+       progress: wordID -> {sSlow,sFast,diff,state,reps,lapses,dueAt,lastAt,firstAt}
+       events: append-only [{w,r,t,iv}] (r: 1=Quên, 3=Nhớ)
+       sel: "level-lesson" -> bool (deselecting never erases progress)
+       ============================================================ */
+    var LS_KEY = "flashcard-hsk-public.v1";
+    var store = null;
+    function genDeviceId() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      var cs = "0123456789abcdef", s = "";
+      for (var i = 0; i < 32; i++) {
+        s += cs[Math.floor(Math.random() * 16)];
+        if (i === 7 || i === 11 || i === 15 || i === 19) s += "-";
+      }
+      return s;
+    }
+    function defaultStore() {
+      return {
+        deviceId: genDeviceId(), settingsUpdatedAt: 0,
+        sel: { "0-1": true, "0-2": true },   /* both class days selected on first run, as in the iOS app */
+        pin: false, nghia: false,
+        prog: {}, events: [], totalEvents: 0
+      };
+    }
+    function loadStore() {
+      try {
+        var raw = localStorage.getItem(LS_KEY);
+        if (raw) {
+          var s = JSON.parse(raw);
+          if (s && typeof s === "object" && s.prog && s.sel) {
+            store = s;
+            if (!store.deviceId) { store.deviceId = genDeviceId(); saveStore(); }
+            if (typeof store.settingsUpdatedAt !== "number") store.settingsUpdatedAt = 0;
+            return;
+          }
+        }
+      } catch (e) { /* fall through to defaults */ }
+      store = defaultStore();
+      saveStore();
+    }
+    function saveStore() {
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(store));
+      } catch (e) {
+        /* Quota: drop the oldest half of the event log (progress is never
+           touched; totalEvents keeps the true count) and retry once. */
+        try {
+          store.events = store.events.slice(Math.floor(store.events.length / 2));
+          localStorage.setItem(LS_KEY, JSON.stringify(store));
+        } catch (e2) { /* progress may not persist this session */ }
+      }
+    }
+
+    /* ============================================================
+       Supabase sync — localStorage is the offline cache, Supabase
+       (project bogreitxdmtplvcidfyk) is the source of truth, keyed
+       by device_id. Pull+merge on open; grades are pushed in
+       debounced batches and never block swiping. If the flashcard_*
+       tables do not exist yet (SQL not run), or the network is
+       down, the app runs purely on the local cache and syncs later.
+       ============================================================ */
+    var SB_URL = "https://bogreitxdmtplvcidfyk.supabase.co";
+    var SB_KEY = "sb_publishable_VqXPWWOAGynA_YIhMvYu0g_xGPsZFYx";
+    var sb = { state: "unknown", /* unknown | ready | missing | offline */
+      dirtyProg: {}, dirtyReviews: [], settingsDirty: false,
+      timer: null, flushing: false, lastSync: 0 };
+
+    function sbIsMissing(status, body) {
+      return status === 404 || !!(body && (body.code === "PGRST205" || body.code === "42P01"));
+    }
+    function sbReq(path, opts) {
+      opts = opts || {};
+      var headers = { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY,
+                      "Content-Type": "application/json" };
+      if (opts.headers) Object.keys(opts.headers).forEach(function (k) { headers[k] = opts.headers[k]; });
+      return fetch(SB_URL + "/rest/v1/" + path, {
+        method: opts.method || "GET", headers: headers,
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        keepalive: !!opts.keepalive
+      }).then(function (r) {
+        return r.text().then(function (t) {
+          var j = null;
+          try { j = t ? JSON.parse(t) : null; } catch (e) {}
+          return { status: r.status, body: j };
+        });
+      });
+    }
+    function sbFetchAll(table, orderCol, maxRows) {
+      var out = [], page = 1000;
+      function step(offset) {
+        var q = table + "?device_id=eq." + encodeURIComponent(store.deviceId) +
+          "&select=*&order=" + orderCol + ".asc&limit=" + page + "&offset=" + offset;
+        return sbReq(q).then(function (res) {
+          if (sbIsMissing(res.status, res.body)) { sb.state = "missing"; throw new Error("missing"); }
+          if (res.status >= 400) throw new Error("http " + res.status);
+          var rows = Array.isArray(res.body) ? res.body : [];
+          out = out.concat(rows);
+          if (rows.length === page && out.length < maxRows) return step(offset + page);
+          return out;
+        });
+      }
+      return step(0);
+    }
+    function sbPullMerge() {
+      if (sb.state === "missing") return Promise.resolve(false);
+      return Promise.all([
+        sbFetchAll("flashcard_progress", "word_id", 6000),
+        sbFetchAll("flashcard_reviews", "reviewed_at", 20000),
+        sbReq("flashcard_settings?device_id=eq." + encodeURIComponent(store.deviceId) + "&select=*")
+      ]).then(function (arr) {
+        var progRows = arr[0], revRows = arr[1], setRes = arr[2];
+        if (sbIsMissing(setRes.status, setRes.body)) {
+          sb.state = "missing"; updateSyncStatus(); return false;
+        }
+        if (setRes.status >= 400) throw new Error("http " + setRes.status);
+        sb.state = "ready";
+        var changed = false, i, id;
+        /* progress: per word, the row reviewed most recently wins */
+        var remoteProg = {};
+        progRows.forEach(function (r) {
+          var rp = { sSlow: +r.stability_slow, sFast: +r.stability_fast,
+            diff: r.difficulty == null ? 0 : +r.difficulty, state: r.state || "review",
+            reps: r.reps | 0, lapses: r.lapses | 0,
+            dueAt: Date.parse(r.due_at), lastAt: Date.parse(r.last_reviewed_at),
+            firstAt: r.first_reviewed_at ? Date.parse(r.first_reviewed_at) : Date.parse(r.last_reviewed_at) };
+          remoteProg[r.word_id] = rp;
+          var lp = store.prog[r.word_id];
+          if (!lp || rp.lastAt > lp.lastAt) { store.prog[r.word_id] = rp; changed = true; }
+        });
+        Object.keys(store.prog).forEach(function (wid) {
+          var rp2 = remoteProg[wid];
+          if (!rp2 || store.prog[wid].lastAt > rp2.lastAt) sb.dirtyProg[wid] = true;
+        });
+        /* reviews: union, deduped by (word, time, rating) */
+        var remoteKeys = {}, seen = {};
+        revRows.forEach(function (r) { remoteKeys[r.word_id + "|" + Date.parse(r.reviewed_at) + "|" + r.rating] = true; });
+        store.events.forEach(function (e) { seen[e.w + "|" + e.t + "|" + e.r] = true; });
+        revRows.forEach(function (r) {
+          var t = Date.parse(r.reviewed_at), k = r.word_id + "|" + t + "|" + r.rating;
+          if (!seen[k]) {
+            seen[k] = true;
+            store.events.push({ w: r.word_id, r: r.rating, t: t, iv: +r.interval_days });
+            changed = true;
+          }
+        });
+        if (changed) store.events.sort(function (a, b) { return a.t - b.t; });
+        if (store.totalEvents < store.events.length) store.totalEvents = store.events.length;
+        store.events.forEach(function (e) {
+          if (!remoteKeys[e.w + "|" + e.t + "|" + e.r]) {
+            var already = sb.dirtyReviews.some(function (d) { return d.w === e.w && d.t === e.t && d.r === e.r; });
+            if (!already) sb.dirtyReviews.push(e);
+          }
+        });
+        /* settings: newer updated_at wins */
+        var srows = Array.isArray(setRes.body) ? setRes.body : [];
+        if (srows.length) {
+          var sr = srows[0], remoteUpd = Date.parse(sr.updated_at) || 0;
+          if (remoteUpd > (store.settingsUpdatedAt || 0)) {
+            if (sr.selected_lessons && typeof sr.selected_lessons === "object") store.sel = sr.selected_lessons;
+            store.pin = !!sr.example_pinyin;
+            store.nghia = !!sr.example_vi;
+            store.settingsUpdatedAt = remoteUpd;
+            changed = true;
+          } else if ((store.settingsUpdatedAt || 0) > remoteUpd) sb.settingsDirty = true;
+        } else if (store.settingsUpdatedAt > 0) sb.settingsDirty = true;
+        if (changed) saveStore();
+        updateSyncStatus();
+        sbFlush();
+        return changed;
+      }).catch(function () {
+        if (sb.state !== "missing") sb.state = "offline";
+        updateSyncStatus();
+        return false;
+      });
+    }
+    function sbSchedule() {
+      if (sb.timer) return;
+      sb.timer = setTimeout(function () { sb.timer = null; sbFlush(); }, 1200);
+    }
+    function sbFlush() {
+      if (sb.flushing || sb.state === "missing") return;
+      var pids = Object.keys(sb.dirtyProg);
+      var revs = sb.dirtyReviews.slice();
+      if (!pids.length && !revs.length && !sb.settingsDirty) return;
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+      sb.flushing = true;
+      var jobs = [];
+      if (pids.length) {
+        var rows = pids.map(function (wid) {
+          var p = store.prog[wid];
+          return { device_id: store.deviceId, word_id: wid,
+            stability_slow: p.sSlow, stability_fast: p.sFast, difficulty: p.diff, state: p.state,
+            due_at: new Date(p.dueAt).toISOString(), last_reviewed_at: new Date(p.lastAt).toISOString(),
+            first_reviewed_at: new Date(p.firstAt).toISOString(), reps: p.reps, lapses: p.lapses };
+        });
+        jobs.push(sbReq("flashcard_progress?on_conflict=device_id,word_id", {
+          method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: rows
+        }).then(function (res) {
+          if (sbIsMissing(res.status, res.body)) { sb.state = "missing"; return; }
+          if (res.status >= 400) throw new Error("push progress " + res.status);
+          pids.forEach(function (wid) { delete sb.dirtyProg[wid]; });
+        }));
+      }
+      if (revs.length) {
+        var rrows = revs.map(function (e) {
+          return { device_id: store.deviceId, word_id: e.w, rating: e.r,
+                   reviewed_at: new Date(e.t).toISOString(), interval_days: e.iv };
+        });
+        jobs.push(sbReq("flashcard_reviews", {
+          method: "POST", headers: { Prefer: "return=minimal" }, body: rrows
+        }).then(function (res) {
+          if (sbIsMissing(res.status, res.body)) { sb.state = "missing"; return; }
+          if (res.status >= 400) throw new Error("push reviews " + res.status);
+          sb.dirtyReviews = sb.dirtyReviews.filter(function (e) { return revs.indexOf(e) === -1; });
+        }));
+      }
+      if (sb.settingsDirty) {
+        var srow = { device_id: store.deviceId, selected_lessons: store.sel,
+          example_pinyin: store.pin, example_vi: store.nghia,
+          updated_at: new Date(store.settingsUpdatedAt || Date.now()).toISOString() };
+        jobs.push(sbReq("flashcard_settings?on_conflict=device_id", {
+          method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: [srow]
+        }).then(function (res) {
+          if (sbIsMissing(res.status, res.body)) { sb.state = "missing"; return; }
+          if (res.status >= 400) throw new Error("push settings " + res.status);
+          sb.settingsDirty = false;
+        }));
+      }
+      Promise.all(jobs).then(function () {
+        sb.flushing = false;
+        if (sb.state !== "missing") { sb.state = "ready"; sb.lastSync = Date.now(); }
+        updateSyncStatus();
+        if (Object.keys(sb.dirtyProg).length || sb.dirtyReviews.length || sb.settingsDirty) sbSchedule();
+      }).catch(function () {
+        sb.flushing = false;
+        if (sb.state !== "missing") sb.state = "offline";
+        updateSyncStatus();
+      });
+    }
+    function sbMarkGrade(wordID, ev) {
+      sb.dirtyProg[wordID] = true;
+      sb.dirtyReviews.push(ev);
+      sbSchedule();
+    }
+    function sbMarkSettings() {
+      store.settingsUpdatedAt = Date.now();
+      sb.settingsDirty = true;
+      sbSchedule();
+    }
+    function updateSyncStatus() {
+      var dEl = document.getElementById("deviceIdText");
+      if (dEl && store) dEl.textContent = store.deviceId;
+      var el = document.getElementById("syncStatus");
+      if (!el) return;
+      if (sb.state === "ready") {
+        el.textContent = "Đã đồng bộ với Supabase" +
+          (sb.lastSync ? " lúc " + new Date(sb.lastSync).toLocaleTimeString("vi-VN") : "") + ".";
+      } else if (sb.state === "missing") {
+        el.textContent = "Chưa tạo bảng đồng bộ trên Supabase — tiến độ tạm lưu trên trình duyệt này. Chạy file SQL tạo bảng (nút bên dưới) trong Supabase Dashboard để bật đồng bộ; app sẽ tự đồng bộ sau đó.";
+      } else if (sb.state === "offline") {
+        el.textContent = "Chưa nối được Supabase (mất mạng hoặc lỗi tạm thời) — vẫn học bình thường bằng dữ liệu trên máy, app tự đồng bộ lại khi có mạng.";
+      } else {
+        el.textContent = "Đang kiểm tra đồng bộ…";
+      }
+    }
+
+    /* ============================================================
+       Vocabulary + queue (endless study, exactly like the iOS app)
+       ============================================================ */
+    var WORDS = [], BY_ID = {}, LEVELS = [], LESSONS = {}; /* LESSONS[level] = [lesson...] */
+    var queue = [], qIndex = 0, builtForSel = "";
+    var cardUI = { revealed: false, analysis: false };
+    var grading = false;
+
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+    function shuffle(a) {
+      for (var i = a.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = a[i]; a[i] = a[j]; a[j] = t;
+      }
+      return a;
+    }
+    function selKey(level, lesson) { return level + "-" + lesson; }
+    function selectedKeys() {
+      var s = new Set();
+      Object.keys(store.sel).forEach(function (k) { if (store.sel[k]) s.add(k); });
+      return s;
+    }
+    function levelName(level) { return level === 0 ? "Từ lớp học" : "HSK " + level; }
+    function lessonName(level, lesson) {
+      if (level === 0) {
+        if (lesson === 1) return "09/11/2026";
+        if (lesson === 2) return "16/11/2026";
+        return "Buổi " + lesson;
+      }
+      return "Bài " + lesson;
+    }
+    function badgeFor(wd) {
+      return levelName(wd.level) + " · " + lessonName(wd.level, wd.lesson);
+    }
+    function prevOf(wordID) {
+      var p = store.prog[wordID];
+      if (!p) return null;
+      return { sSlow: p.sSlow, sFast: p.sFast, diff: p.diff,
+               lastAt: p.lastAt, state: p.state, lapses: p.lapses };
+    }
+    function currentWord() { return qIndex < queue.length ? queue[qIndex] : null; }
+    function nextWord() { return qIndex + 1 < queue.length ? queue[qIndex + 1] : null; }
+
+    function buildQueue() {
+      var sel = selectedKeys();
+      builtForSel = Array.from(sel).sort().join(",");
+      var now = Date.now();
+      var due = [], fresh = [];
+      for (var i = 0; i < WORDS.length; i++) {
+        var wd = WORDS[i];
+        if (!sel.has(selKey(wd.level, wd.lesson))) continue;
+        var p = store.prog[wd.id];
+        if (p) { if (p.dueAt <= now) due.push(wd); }
+        else fresh.push(wd);
+      }
+      queue = shuffle(due.concat(fresh));
+      qIndex = 0;
+      if (!queue.length) appendExtraRound(now, null);
+    }
+
+    function extraRoundWords(now, override) {
+      var sel = selectedKeys();
+      if (!sel.size) return [];
+      var scored = [], seen = {};
+      Object.keys(store.prog).forEach(function (id) {
+        var wd = BY_ID[id];
+        if (!wd || !sel.has(selKey(wd.level, wd.lesson))) return;
+        var p = store.prog[id];
+        var elapsed = Math.max(0, (now - p.lastAt) / FSRS.dayMs);
+        scored.push({ wd: wd, r: FSRS.retrievability(elapsed, p.sSlow, p.sFast) });
+        seen[id] = true;
+      });
+      if (override && !seen[override.id]) {
+        var wd2 = BY_ID[override.id];
+        if (wd2 && sel.has(selKey(wd2.level, wd2.lesson))) {
+          var el2 = Math.max(0, (now - override.lastAt) / FSRS.dayMs);
+          scored.push({ wd: wd2, r: FSRS.retrievability(el2, override.sSlow, override.sFast) });
+        }
+      }
+      shuffle(scored); /* stable sort keeps near-equal R in random order */
+      scored.sort(function (a, b) { return a.r - b.r; });
+      return scored.map(function (s) { return s.wd; });
+    }
+    function appendExtraRound(now, override) {
+      var round = extraRoundWords(now, override);
+      if (!round.length) return;
+      if (queue.length && round.length > 1 && round[0].id === queue[queue.length - 1].id) {
+        round.push(round.shift());
+      }
+      queue = queue.concat(round);
+    }
+
+    function applyGrade(rating) {
+      var wd = currentWord();
+      if (!wd) return;
+      var now = Date.now();
+      var res = FSRS.grade(prevOf(wd.id), rating, now);
+      var p = store.prog[wd.id];
+      if (p) {
+        p.sSlow = res.sSlow; p.sFast = res.sFast; p.diff = res.diff;
+        p.state = res.state; p.reps += 1; p.lapses = res.lapses;
+        p.dueAt = now + res.intervalDays * FSRS.dayMs; p.lastAt = now;
+      } else {
+        store.prog[wd.id] = {
+          sSlow: res.sSlow, sFast: res.sFast, diff: res.diff, state: res.state,
+          reps: 1, lapses: res.lapses,
+          dueAt: now + res.intervalDays * FSRS.dayMs, lastAt: now, firstAt: now
+        };
+      }
+      var ev = { w: wd.id, r: rating, t: now, iv: res.intervalDays };
+      store.events.push(ev);
+      store.totalEvents += 1;
+      saveStore();
+      sbMarkGrade(wd.id, ev);   /* batched Supabase push; never blocks the swipe */
+      if (rating === 1) queue.push(wd); /* Again: back into this session's queue */
+      qIndex += 1;
+      if (qIndex >= queue.length) {
+        appendExtraRound(Date.now(), { id: wd.id, sSlow: res.sSlow, sFast: res.sFast, lastAt: now });
+      }
+    }
+
+    /* ============================================================
+       Deck rendering + Tinder swipe
+       ============================================================ */
+    var deckEl = document.getElementById("deck");
+    var badgeEl = document.getElementById("badge");
+    var topCard = null, backCard = null, topWord = null;
+    var labelGood = "", labelAgain = "";
+
+    /* Fit the hanzi to the card: cap by state (104 / 54 / 42 px, as in the
+       iOS app), but never wider than the card's inner width — long words
+       (5–9 chars) shrink instead of spilling over the card edges. */
+    function fitHanzi(el, wd, revealed) {
+      if (!el) return;
+      var n = Math.max(1, Array.from(wd.hanzi).length);
+      var cap = !revealed ? 104 : (cardUI.analysis ? 42 : 54);
+      var avail = (deckEl.clientWidth || 360) - 58;
+      var size = Math.max(20, Math.min(cap, Math.floor(avail / n)));
+      el.style.fontSize = size + "px";
+    }
+    function hanziClass(wd, revealed) {
+      var n = Array.from(wd.hanzi).length;
+      var cls = "hanzi ";
+      if (!revealed) {
+        if (n >= 6) cls += "len6"; else if (n === 5) cls += "len5"; else cls += "big";
+      } else if (cardUI.analysis) cls += "small";
+      else cls += "mid";
+      return cls;
+    }
+    function switchHTML(id, on, label) {
+      return '<label class="tg"><span class="switch"><input type="checkbox" id="' + id + '"' +
+        (on ? " checked" : "") + '><span class="track"></span></span>' + label + "</label>";
+    }
+    function exampleHTML(wd) {
+      var h = '<div class="block"><div class="block-head"><span class="block-title">VÍ DỤ</span>' +
+        switchHTML("tgPin", store.pin, "Pinyin") + switchHTML("tgNghia", store.nghia, "Nghĩa") + "</div>" +
+        '<div class="ex-zh">' + esc(wd.exZh) + "</div>";
+      if (store.pin) h += '<div class="ex-py">' + esc(wd.exPinyin) + "</div>";
+      if (store.nghia) h += '<div class="ex-vi">' + esc(wd.exVi) + "</div>";
+      return h + "</div>";
+    }
+    function analysisHTML(wd) {
+      var h = '<div class="block"><div class="block-head"><span class="block-title">CHIẾT TỰ · BỘ THỦ</span></div>';
+      wd.chars.forEach(function (a) {
+        var rhs = a.parts.map(function (pt) { return esc(pt.char) + " (" + esc(pt.gloss) + ")"; }).join(" + ");
+        h += '<div class="ana-row"><div class="ana-char">' + esc(a.char) + "</div>" +
+          '<div><div class="ana-rad">Bộ ' + esc(a.radicalName) + " " + esc(a.radical) + " — " + esc(a.radicalMeaning) + "</div>" +
+          '<div class="ana-parts">' + esc(a.char) + " = " + rhs + "</div></div></div>";
+      });
+      return h + "</div>";
+    }
+    function detailsHTML(wd) {
+      var h = '<div class="details"><div class="pin-row"><span class="pinyin">' + esc(wd.pinyin) + "</span>";
+      if (wd.pos) h += '<span class="pos">' + esc(wd.pos) + "</span>";
+      h += "</div>";
+      if (wd.hanViet) h += '<div class="hanviet">Hán-Việt: ' + esc(wd.hanViet) + "</div>";
+      h += '<div class="vi">' + esc(wd.vi) + "</div>";
+      if (cardUI.analysis) h += analysisHTML(wd);
+      else if (wd.exZh) h += exampleHTML(wd);
+      if (wd.chars && wd.chars.length) {
+        h += '<button class="ana-btn" id="anaBtn">Chiết tự · Bộ thủ ' +
+          '<svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></button>';
+      }
+      return h + "</div>";
+    }
+    function fillTop() {
+      if (!topCard || !topWord) return;
+      var inner = topCard.querySelector(".card-inner");
+      var h = '<div class="' + hanziClass(topWord, cardUI.revealed) + '">' + esc(topWord.hanzi) + "</div>";
+      if (cardUI.revealed) h += detailsHTML(topWord);
+      inner.innerHTML = h;
+      inner.scrollTop = 0;
+      fitHanzi(inner.querySelector(".hanzi"), topWord, cardUI.revealed);
+      if (cardUI.revealed) {
+        var tp = document.getElementById("tgPin"), tn = document.getElementById("tgNghia");
+        if (tp) tp.addEventListener("change", function () { store.pin = tp.checked; sbMarkSettings(); saveStore(); fillTop(); });
+        if (tn) tn.addEventListener("change", function () { store.nghia = tn.checked; sbMarkSettings(); saveStore(); fillTop(); });
+        var ab = document.getElementById("anaBtn");
+        if (ab) ab.addEventListener("click", function (e) {
+          e.stopPropagation();
+          cardUI.analysis = !cardUI.analysis;
+          fillTop();
+        });
+      }
+    }
+    function makeCard(wd, isTop) {
+      var d = document.createElement("div");
+      d.className = "card " + (isTop ? "top" : "back");
+      var inner = '<div class="card-inner"><div class="' + hanziClass(wd, false) + '">' + esc(wd.hanzi) + "</div></div>";
+      if (isTop) {
+        inner += '<div class="drag-tint"></div>' +
+          '<div class="stamp good"><span class="word">NHỚ</span><span class="iv">' + esc(labelGood) + "</span></div>" +
+          '<div class="stamp bad"><span class="word">QUÊN</span><span class="iv">' + esc(labelAgain) + "</span></div>";
+      }
+      d.innerHTML = inner;
+      fitHanzi(d.querySelector(".hanzi"), wd, false);
+      return d;
+    }
+    function renderEmpty(noSelection) {
+      badgeEl.textContent = "";
+      if (noSelection) {
+        deckEl.innerHTML = '<div class="empty"><h2>Chưa chọn bài nào</h2>' +
+          "<p>Mở Cài đặt (bánh răng ở góc trên) để chọn bài muốn học, app sẽ vào học ngay.</p>" +
+          '<button id="emptySettings">Mở Cài đặt</button></div>';
+      } else {
+        deckEl.innerHTML = '<div class="empty"><h2>Chưa có từ nào để học</h2>' +
+          "<p>Các bài đã chọn chưa có từ nào. Mở Cài đặt để chọn thêm bài, app sẽ vào học ngay.</p>" +
+          '<button id="emptySettings">Mở Cài đặt</button></div>';
+      }
+      var b = document.getElementById("emptySettings");
+      if (b) b.addEventListener("click", openSettings);
+      topCard = null; backCard = null; topWord = null;
+    }
+    function renderDeck(promote) {
+      var cur = currentWord();
+      if (!cur) { renderEmpty(selectedKeys().size === 0); return; }
+      topWord = cur;
+      cardUI = { revealed: false, analysis: false };
+      var now = Date.now(), prev = prevOf(cur.id);
+      labelGood = FSRS.intervalLabel(FSRS.grade(prev, 3, now).intervalDays);
+      labelAgain = FSRS.intervalLabel(FSRS.grade(prev, 1, now).intervalDays);
+      badgeEl.textContent = badgeFor(cur);
+      deckEl.innerHTML = "";
+      var nxt = nextWord();
+      backCard = null;
+      if (nxt) {
+        backCard = makeCard(nxt, false);
+        backCard.style.transform = "translateY(14px) scale(0.95)";
+        backCard.style.opacity = "0.72";
+        deckEl.appendChild(backCard);
+      }
+      topCard = makeCard(cur, true);
+      deckEl.appendChild(topCard);
+      fillTop();
+      attachDrag(topCard);
+      if (promote) {
+        topCard.style.transform = "translateY(14px) scale(0.95)";
+        topCard.style.opacity = "0.85";
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            if (!topCard) return;
+            topCard.style.transition = "transform 0.18s ease, opacity 0.18s ease";
+            topCard.style.transform = "";
+            topCard.style.opacity = "";
+            setTimeout(function () { if (topCard) topCard.style.transition = ""; }, 200);
+          });
+        });
+      }
+    }
+
+    /* --- Drag: only transform/opacity move; glass blur drops while dragging --- */
+    function attachDrag(card) {
+      var startX = 0, startY = 0, dx = 0, pid = null, dragging = false;
+      var tint = card.querySelector(".drag-tint");
+      var stampGood = card.querySelector(".stamp.good");
+      var stampBad = card.querySelector(".stamp.bad");
+
+      function applyDrag(x) {
+        var p = Math.min(1, Math.abs(x) / 160);
+        var rot = Math.max(-20, Math.min(20, x / 16));
+        card.style.transform = "translateX(" + x + "px) rotate(" + rot + "deg)";
+        var good = x >= 0;
+        tint.style.backgroundColor = "rgba(" + (good ? "34,197,94" : "239,68,68") + "," + (p * 0.52) + ")";
+        tint.style.opacity = Math.abs(x) > 4 ? "1" : "0";
+        var so = Math.min(1, Math.abs(x) / 100);
+        var st = good ? stampGood : stampBad, other = good ? stampBad : stampGood;
+        st.style.opacity = String(so);
+        st.style.transform = "translate(-50%,-50%) rotate(-15deg) scale(" + (1.12 - 0.12 * so) + ")";
+        other.style.opacity = "0";
+        if (backCard) {
+          backCard.style.transform = "translateY(" + (14 * (1 - p)) + "px) scale(" + (0.95 + 0.05 * p) + ")";
+          backCard.style.opacity = String(0.72 + 0.28 * p);
+        }
+      }
+      function resetOverlays() {
+        tint.style.opacity = "0";
+        stampGood.style.opacity = "0";
+        stampBad.style.opacity = "0";
+        if (backCard) {
+          backCard.style.transition = "transform 0.3s ease, opacity 0.3s ease";
+          backCard.style.transform = "translateY(14px) scale(0.95)";
+          backCard.style.opacity = "0.72";
+          setTimeout(function () { if (backCard) backCard.style.transition = ""; }, 320);
+        }
+      }
+      card.addEventListener("pointerdown", function (e) {
+        if (grading || pid !== null) return;
+        pid = e.pointerId;
+        try { card.setPointerCapture(pid); } catch (err) {}
+        startX = e.clientX; startY = e.clientY; dx = 0; dragging = false;
+        card.style.transition = "";
+      });
+      card.addEventListener("pointermove", function (e) {
+        if (e.pointerId !== pid) return;
+        var mx = e.clientX - startX, my = e.clientY - startY;
+        if (!dragging) {
+          if (Math.abs(mx) > Math.abs(my) && Math.abs(mx) > 4) {
+            dragging = true;
+            card.classList.add("dragging");
+          } else { return; }
+        }
+        dx = mx;
+        applyDrag(dx);
+      });
+      function end(e) {
+        if (e.pointerId !== pid) return;
+        pid = null;
+        if (dragging) {
+          dragging = false;
+          card.classList.remove("dragging");
+          if (dx > 100) flyOut(1, 3);
+          else if (dx < -100) flyOut(-1, 1);
+          else {
+            card.style.transition = "transform 0.38s cubic-bezier(0.34, 1.25, 0.5, 1)";
+            card.style.transform = "";
+            resetOverlays();
+            setTimeout(function () { card.style.transition = ""; }, 400);
+          }
+        } else if (!grading && !cardUI.revealed) {
+          cardUI.revealed = true;   /* tap anywhere reveals the answer */
+          fillTop();
+        }
+        dx = 0;
+      }
+      card.addEventListener("pointerup", end);
+      card.addEventListener("pointercancel", end);
+
+      function flyOut(dir, rating) {
+        grading = true;
+        var exitX = dir * (deckEl.clientWidth + 140);
+        card.style.transition = "transform 0.26s ease-out";
+        card.style.transform = "translateX(" + exitX + "px) rotate(" + (dir * 18) + "deg)";
+        setTimeout(function () {
+          applyGrade(rating);
+          grading = false;
+          renderDeck(true);
+        }, 270);
+      }
+    }
+
+    /* ============================================================
+       Settings
+       ============================================================ */
+    var sheet = document.getElementById("sheet");
+    var viewMain = document.getElementById("viewMain");
+    var viewLessons = document.getElementById("viewLessons");
+    var pickerLevel = null, selAtOpen = "";
+
+    function fmt(n) { return n.toLocaleString("vi-VN"); }
+    function openSettings() {
+      selAtOpen = Array.from(selectedKeys()).sort().join(",");
+      document.getElementById("swPinyin").checked = store.pin;
+      document.getElementById("swMeaning").checked = store.nghia;
+      renderLevels();
+      renderStats();
+      updateSyncStatus();
+      showView(viewMain);
+      sheet.classList.add("open");
+      sheet.setAttribute("aria-hidden", "false");
+    }
+    function closeSettings() {
+      sheet.classList.remove("open");
+      sheet.setAttribute("aria-hidden", "true");
+      if (Array.from(selectedKeys()).sort().join(",") !== selAtOpen) buildQueue();
+      renderDeck(false);
+    }
+    function showView(v) {
+      [viewMain, viewLessons].forEach(function (x) {
+        var on = x === v;
+        x.classList.toggle("active", on);
+        x.style.display = on ? "flex" : "none";
+      });
+    }
+    function renderStats() {
+      var now = Date.now(), due = 0;
+      Object.keys(store.prog).forEach(function (id) { if (store.prog[id].dueAt <= now) due++; });
+      document.getElementById("stTotal").textContent = fmt(WORDS.length);
+      document.getElementById("stLearned").textContent = fmt(Object.keys(store.prog).length);
+      document.getElementById("stDue").textContent = fmt(due);
+      document.getElementById("stGrades").textContent = fmt(store.totalEvents);
+    }
+    function renderLevels() {
+      var list = document.getElementById("levelList");
+      list.innerHTML = "";
+      LEVELS.forEach(function (level) {
+        var b = document.createElement("button");
+        b.className = "grow";
+        var count = LESSONS[level].length;
+        b.innerHTML = '<span class="grow-label">' + esc(levelName(level)) + "</span>" +
+          '<span class="grow-sub">' + count + (level === 0 ? " buổi" : " bài") + "</span>" +
+          '<svg class="chev" viewBox="0 0 9 15"><polyline points="1.5,1.5 7,7.5 1.5,13.5"/></svg>';
+        b.addEventListener("click", function () { openPicker(level); });
+        list.appendChild(b);
+      });
+    }
+    var CHECK_ON = '<svg class="check" viewBox="0 0 26 26"><circle class="on" cx="13" cy="13" r="12"/><path d="M8 13.5 L11.5 17 L18 9.5" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var CHECK_OFF = '<svg class="check" viewBox="0 0 26 26"><circle class="off" cx="13" cy="13" r="11.5"/></svg>';
+    function openPicker(level) {
+      pickerLevel = level;
+      document.getElementById("pickerTitle").textContent = levelName(level);
+      renderLessons();
+      showView(viewLessons);
+    }
+    function renderLessons() {
+      var list = document.getElementById("lessonList");
+      list.innerHTML = "";
+      LESSONS[pickerLevel].forEach(function (lesson) {
+        var words = WORDS.filter(function (wd) { return wd.level === pickerLevel && wd.lesson === lesson; });
+        var learned = words.filter(function (wd) { return !!store.prog[wd.id]; }).length;
+        var on = !!store.sel[selKey(pickerLevel, lesson)];
+        var b = document.createElement("button");
+        b.className = "grow";
+        b.innerHTML = (on ? CHECK_ON : CHECK_OFF) +
+          '<span class="grow-label">' + esc(lessonName(pickerLevel, lesson)) + "</span>" +
+          '<span class="grow-sub">' + learned + "/" + words.length + " từ</span>";
+        b.addEventListener("click", function () {
+          var k = selKey(pickerLevel, lesson);
+          store.sel[k] = !store.sel[k];
+          sbMarkSettings();
+          saveStore();
+          renderLessons();
+        });
+        list.appendChild(b);
+      });
+    }
+    function setAllLessons(on) {
+      LESSONS[pickerLevel].forEach(function (lesson) { store.sel[selKey(pickerLevel, lesson)] = on; });
+      sbMarkSettings();
+      saveStore();
+      renderLessons();
+    }
+
+    /* ---------- Backup export / restore (same JSON format as the iOS app) ---------- */
+    function iso(ms) { return new Date(ms).toISOString(); }
+    function exportBackup() {
+      var payload = {
+        exportedAt: iso(Date.now()),
+        deviceId: store.deviceId,
+        progress: Object.keys(store.prog).map(function (id) {
+          var p = store.prog[id];
+          return { wordID: id, stabilitySlow: p.sSlow, stabilityFast: p.sFast,
+            difficulty: p.diff, state: p.state, reps: p.reps, lapses: p.lapses,
+            dueAt: iso(p.dueAt), lastReviewAt: iso(p.lastAt), firstReviewAt: iso(p.firstAt) };
+        }),
+        events: store.events.map(function (e) {
+          return { wordID: e.w, rating: e.r, reviewedAt: iso(e.t), intervalDays: e.iv };
+        })
+      };
+      var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "flashcard-hsk-backup.json";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 400);
+    }
+    function backupMsg(text, ok) {
+      var m = document.getElementById("backupMsg");
+      m.textContent = text;
+      m.className = "msg " + (ok ? "ok" : "err");
+    }
+    function importBackup(file) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var payload = JSON.parse(String(reader.result));
+          if (!payload || !Array.isArray(payload.progress) || !Array.isArray(payload.events)) {
+            throw new Error("bad format");
+          }
+          if (typeof payload.deviceId === "string" && payload.deviceId) {
+            /* The backup carries its device_id: adopting it makes this
+               browser continue that device's synced progress too. */
+            store.deviceId = payload.deviceId;
+            sb.dirtyProg = {}; sb.dirtyReviews = []; sb.settingsDirty = false;
+            if (sb.state === "missing") sb.state = "unknown";
+          }
+          var cards = 0;
+          payload.progress.forEach(function (it) {
+            if (!BY_ID[it.wordID]) return;
+            var due = Date.parse(it.dueAt), last = Date.parse(it.lastReviewAt), first = Date.parse(it.firstReviewAt);
+            if (isNaN(due) || isNaN(last) || isNaN(first)) throw new Error("bad date");
+            store.prog[it.wordID] = {
+              sSlow: +it.stabilitySlow, sFast: +it.stabilityFast, diff: +it.difficulty,
+              state: String(it.state), reps: it.reps | 0, lapses: it.lapses | 0,
+              dueAt: due, lastAt: last, firstAt: first
+            };
+            cards++;
+          });
+          var seen = new Set(store.events.map(function (e) { return e.w + "|" + e.t + "|" + e.r; }));
+          var evts = 0, addedEvents = [];
+          payload.events.forEach(function (it) {
+            if (!BY_ID[it.wordID]) return;
+            var t = Date.parse(it.reviewedAt);
+            if (isNaN(t)) throw new Error("bad date");
+            var k = it.wordID + "|" + t + "|" + it.rating;
+            if (seen.has(k)) return;
+            seen.add(k);
+            var nev = { w: it.wordID, r: it.rating, t: t, iv: +it.intervalDays };
+            store.events.push(nev);
+            addedEvents.push(nev);
+            evts++;
+          });
+          store.totalEvents += evts;
+          saveStore();
+          /* Push the restored state up to Supabase for this device_id. */
+          Object.keys(store.prog).forEach(function (wid) { sb.dirtyProg[wid] = true; });
+          addedEvents.forEach(function (e) { sb.dirtyReviews.push(e); });
+          sbSchedule();
+          updateSyncStatus();
+          buildQueue();
+          selAtOpen = Array.from(selectedKeys()).sort().join(",");
+          renderStats();
+          backupMsg("Đã khôi phục " + cards + " thẻ và " + evts + " lượt chấm từ bản sao lưu.", true);
+        } catch (err) {
+          backupMsg("File không đúng định dạng sao lưu của app (thiếu progress/events hoặc sai kiểu dữ liệu). Hãy chọn đúng file flashcard-hsk-backup.json đã xuất từ app.", false);
+        }
+      };
+      reader.onerror = function () { backupMsg("Không đọc được file đã chọn.", false); };
+      reader.readAsText(file);
+    }
+
+    /* ---------- Wiring ---------- */
+    document.getElementById("gearBtn").addEventListener("click", openSettings);
+    document.getElementById("closeSettings").addEventListener("click", closeSettings);
+    document.getElementById("backSettings").addEventListener("click", function () { showView(viewMain); });
+    document.getElementById("btnSelectAll").addEventListener("click", function () { setAllLessons(true); });
+    document.getElementById("btnSelectNone").addEventListener("click", function () { setAllLessons(false); });
+    document.getElementById("swPinyin").addEventListener("change", function (e) {
+      store.pin = e.target.checked; sbMarkSettings(); saveStore();
+      if (topCard && cardUI.revealed && !cardUI.analysis) fillTop();
+    });
+    document.getElementById("swMeaning").addEventListener("change", function (e) {
+      store.nghia = e.target.checked; sbMarkSettings(); saveStore();
+      if (topCard && cardUI.revealed && !cardUI.analysis) fillTop();
+    });
+    document.getElementById("btnCopyDevice").addEventListener("click", function () {
+      var btn = this;
+      function done() {
+        var old = btn.textContent;
+        btn.textContent = "Đã chép ✓";
+        setTimeout(function () { btn.textContent = old; }, 1600);
+      }
+      function fallback() {
+        var ta = document.createElement("textarea");
+        ta.value = store.deviceId;
+        ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        ta.remove();
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(store.deviceId).then(done, function () { fallback(); done(); });
+      } else { fallback(); done(); }
+    });
+    document.getElementById("btnApplyDevice").addEventListener("click", function () {
+      var inp = document.getElementById("deviceIdInput");
+      var m = document.getElementById("syncMsg");
+      var v = (inp.value || "").trim();
+      if (!v) {
+        m.textContent = "Hãy nhập mã thiết bị từ máy khác trước.";
+        m.className = "msg err";
+        return;
+      }
+      if (v === store.deviceId) {
+        m.textContent = "Đây đã là mã thiết bị của trình duyệt này.";
+        m.className = "msg ok";
+        return;
+      }
+      store.deviceId = v;
+      sb.dirtyProg = {}; sb.dirtyReviews = []; sb.settingsDirty = false;
+      if (sb.state === "missing") sb.state = "unknown";
+      saveStore();
+      updateSyncStatus();
+      sbPullMerge().then(function () {
+        buildQueue();
+        renderDeck(false);
+        renderStats();
+        updateSyncStatus();
+        m.textContent = "Đã chuyển sang mã thiết bị mới và tải tiến độ của mã đó về máy này.";
+        m.className = "msg ok";
+        inp.value = "";
+      });
+    });
+    document.getElementById("btnSql").addEventListener("click", function () {
+      var a = document.createElement("a");
+      a.href = "assets/flashcard-supabase.sql";
+      a.download = "flashcard-supabase.sql";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
+    window.addEventListener("online", function () {
+      if (sb.state === "offline") sb.state = "unknown";
+      sbPullMerge();
+      sbFlush();
+    });
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") sbFlush();
+    });
+    setInterval(function () {
+      if (sb.state !== "missing" &&
+          (Object.keys(sb.dirtyProg).length || sb.dirtyReviews.length || sb.settingsDirty)) sbFlush();
+    }, 30000);
+    document.getElementById("btnExport").addEventListener("click", exportBackup);
+    var fileInput = document.getElementById("fileImport");
+    document.getElementById("btnImport").addEventListener("click", function () { fileInput.click(); });
+    fileInput.addEventListener("change", function () {
+      if (fileInput.files && fileInput.files[0]) importBackup(fileInput.files[0]);
+      fileInput.value = "";
+    });
+
+    /* ---------- Boot: data is bundled with the page, no network while studying ---------- */
+    loadStore();
+    fetch("assets/vocab.json")
+      .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
+      .then(function (data) {
+        WORDS = data;
+        data.forEach(function (wd) {
+          BY_ID[wd.id] = wd;
+          if (!LESSONS[wd.level]) { LESSONS[wd.level] = []; }
+          if (LESSONS[wd.level].indexOf(wd.lesson) === -1) LESSONS[wd.level].push(wd.lesson);
+        });
+        LEVELS = Object.keys(LESSONS).map(Number).sort(function (a, b) { return a - b; });
+        LEVELS.forEach(function (l) { LESSONS[l].sort(function (a, b) { return a - b; }); });
+        buildQueue();
+        renderDeck(false);
+        /* Sync in the background: the deck is already usable from the
+           local cache; merged cloud progress rebuilds it when it lands. */
+        sbPullMerge().then(function (changed) {
+          if (changed) { buildQueue(); renderDeck(false); }
+        });
+      })
+      .catch(function () {
+        deckEl.innerHTML = '<div class="empty"><h2>Không tải được từ vựng</h2>' +
+          "<p>Dữ liệu từ vựng đi kèm trang chưa tải được. Hãy tải lại trang để thử lại.</p></div>";
+        badgeEl.textContent = "";
+      });
+    </script>
+  </body>
+</html>
