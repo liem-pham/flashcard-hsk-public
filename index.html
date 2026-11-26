@@ -735,8 +735,13 @@
       Object.keys(store.sel).forEach(function (k) { if (store.sel[k]) s.add(k); });
       return s;
     }
-    function levelName(level) { return level === 0 ? "Từ lớp học" : "HSK " + level; }
+    function levelName(level) {
+      if (level === 0) return "Từ lớp học";
+      if (level === 7) return "SuperChinese";
+      return "HSK " + level;
+    }
     function lessonName(level, lesson) {
+      if (level === 7) return "Level " + lesson;
       if (level === 0) {
         if (lesson === 1) return "09/11/2026";
         if (lesson === 2) return "16/11/2026";
