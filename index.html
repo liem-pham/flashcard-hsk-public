@@ -450,7 +450,8 @@
     function defaultStore() {
       return {
         deviceId: genDeviceId(), settingsUpdatedAt: 0,
-        sel: { "0-1": true, "0-2": true },   /* both class days selected on first run, as in the iOS app */
+        sel: { "0-1": true, "0-2": true, "0-3": true, "0-4": true, "0-5": true },   /* all class days selected on first run, as in the iOS app */
+        classV3: true,   /* class days 3-5 (19/11, 23/11, 26/11) default-selection applied */
         pin: false, nghia: false,
         prog: {}, events: [], totalEvents: 0
       };
@@ -464,6 +465,17 @@
             store = s;
             if (!store.deviceId) { store.deviceId = genDeviceId(); saveStore(); }
             if (typeof store.settingsUpdatedAt !== "number") store.settingsUpdatedAt = 0;
+            if (!store.classV3) {
+              /* One-time: class days 3-5 (19/11, 23/11, 26/11/2026) arrive
+                 selected by default; every other saved choice is untouched.
+                 Bump the settings clock so the merged selection wins the
+                 next Supabase settings sync instead of being overwritten. */
+              store.sel["0-3"] = true; store.sel["0-4"] = true; store.sel["0-5"] = true;
+              store.classV3 = true;
+              store.settingsUpdatedAt = Date.now();
+              sb.settingsDirty = true;
+              saveStore();
+            }
             return;
           }
         }
@@ -728,6 +740,9 @@
       if (level === 0) {
         if (lesson === 1) return "09/11/2026";
         if (lesson === 2) return "16/11/2026";
+        if (lesson === 3) return "19/11/2026";
+        if (lesson === 4) return "23/11/2026";
+        if (lesson === 5) return "26/11/2026";
         return "Buổi " + lesson;
       }
       return "Bài " + lesson;
